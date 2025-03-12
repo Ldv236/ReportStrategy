@@ -9,6 +9,7 @@ import ru.furyjava.reportstrategy.model.Report;
 import ru.furyjava.reportstrategy.model.ReportType;
 import ru.furyjava.reportstrategy.service.docProcessor.DocStrategy;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -25,6 +26,14 @@ public class ReportService {
     private void initStrategy() {
         docStrategies = docStrategyList.stream()
                 .collect(Collectors.toMap(DocStrategy::getReportType, Function.identity()));
+
+        // Проверка на покрытие всех типов
+        List<ReportType> missingTypes = Arrays.stream(ReportType.values())
+                .filter(type -> !docStrategies.containsKey(type))
+                .toList();
+        if (!missingTypes.isEmpty()) {
+            throw new IllegalStateException("Отсутствуют стратегии для типов: " + missingTypes);
+        }
     }
 
     // метод выполняется при старте приложения
@@ -41,6 +50,12 @@ public class ReportService {
     public void generateDoc(Report report) {
 
         DocStrategy docStrategy = docStrategies.get(report.getReportType());
+        // либо выбрасывать исключение при отсутствии подходящей стратегии
+//        if (docStrategy == null) {
+//            throw new IllegalArgumentException("Нет подходящей стратегии для типа отчета: " + report);
+//        }
+        // либо заранее создать и применять здесь дефолтную стратегию
+        // но лучше при старте сверять энам со стратегиями (сделано выше в методе initStrategy)
         docStrategy.generateDoc(report);
     }
 }
