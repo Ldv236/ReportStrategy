@@ -10,6 +10,7 @@ import ru.furyjava.reportstrategy.model.ReportType;
 import ru.furyjava.reportstrategy.service.docProcessor.DocStrategy;
 
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -24,8 +25,16 @@ public class ReportService {
 
     @PostConstruct
     private void initStrategy() {
+        // можно собрать не в простую HashMap, а в EnumMap - она лучше оптимизирована для использования энамов в ключах
+        // а при совпадении ключей явно выбрасывать исключение
         docStrategies = docStrategyList.stream()
-                .collect(Collectors.toMap(DocStrategy::getReportType, Function.identity()));
+                .collect(Collectors.toMap(
+                        DocStrategy::getReportType,
+                        Function.identity(),
+                        (existing, replacement) -> {
+                            throw new IllegalStateException("Duplicate key found: " + existing.getReportType()); },
+                        () -> new EnumMap<>(ReportType.class)
+                ));
 
         // Проверка на покрытие всех типов
         List<ReportType> missingTypes = Arrays.stream(ReportType.values())
@@ -41,7 +50,7 @@ public class ReportService {
     @EventListener(ApplicationReadyEvent.class)
     private void prepairReport() {
         Report report = Report.builder().data("Данные для отчета")
-                .reportType(ReportType.PDF) // !!! здесь задаётся тип
+                .reportType(ReportType.EXCEL) // !!! здесь задаётся тип
                 .build();
 
         generateDoc(report);
